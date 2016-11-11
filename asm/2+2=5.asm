@@ -1,0 +1,8 @@
+.sample 2+2 = 5
+.
+		LDA		SUM
+		ADD		TWO
+		ADD		TWO
+		DUMP	TWO
+SUM		TWORD	0
+TWO		TWORD	2
