@@ -84,8 +84,8 @@ class SIC:
 			8	:	self.registerValues[8],
 			9	:	self.registerValues[9],
 		}
-
-		self.devices = ["BIOS", "SECONDARY-STORAGE", lambda x:print(decodeBits(x))]
+		# lambda x:print(decodeBits(x))
+		self.devices = ["BIOS", "SECONDARY-STORAGE", Printer()]
 		self.deviceInit()
 
 		self.memory = ["00000000"]*(2**15+1)
@@ -299,13 +299,13 @@ class SIC:
 		cc = self.registers["SW"].getValue()[self.ccPointer:self.ccPointer+3]
 		# print(cc)
 
-		if cc == "100":
+		if cc == "001":
 			self.J(address)
 
 	def JGT(self, address):
 		cc = self.registers["SW"].getValue()[self.ccPointer:self.ccPointer+3]
 		# print("JGT", address, cc)
-		if cc == "001":
+		if cc == "100":
 			self.J(address)
 
 	def JEQ(self, address):
@@ -332,6 +332,7 @@ class SIC:
 		address = decodeBits(address)
 		# print("WD", address, self.devices[address])
 		data = self.registers["A"].getValue()
+		# print(address, self.devices[address], callable(self.devices[address]), dir(self.devices[address]))
 		self.devices[address](data)
 
 
