@@ -383,23 +383,26 @@ class SIC:
 		# file.close()
 
 	def LOAD(self, path="sample_DUMP"):
-		file = open(path, "r")
-		memoryString = file.read()
-		file.close()
-		memoryInfo, memoryList = None, memoryString.split("\n")
-
-		if memoryList[0][0:10] == "memorydump":
-			memoryList, memoryInfo = memoryList[1:], memoryList[0].split(" ")
-
-		if not memoryInfo:
-			sa = decodeBits(self.registers["X"].getValue())
-			ea = len(memoryList)
-			print(sa, ea)
-		else:
-			sa, ea = int(memoryInfo[1][3:]), int(memoryInfo[2][3:])
+		with open(path, "rb") as file:
+			# memoryList = file.read()
+			# memoryInfo, memoryList = None, memoryString.split("\n")
 			
-		for i in range(sa, ea):
-			self.memory[i] = memoryList[i]
+			memoryInfo, memoryList = None, loadBinFile(file)
+			if memoryList[0][0:10] == "memorydump":
+				memoryList, memoryInfo = memoryList[1:], memoryList[0].split(" ")
+
+			if not memoryInfo:
+				sa = decodeBits(self.registers["X"].getValue())
+				ea = len(memoryList)
+				# print(sa, ea)
+			else:
+				sa, ea = int(memoryInfo[1][3:]), int(memoryInfo[2][3:])
+			
+			# change this with word sizze
+			for i in range(sa, ea):
+				m = i*3
+				self.memory[m], self.memory[m+1], self.memory[m+2] = memoryList[i][0:8], memoryList[i][8:16], memoryList[i][16:24]
+				# print(memoryList[i], self.memory[m], self.memory[m+1], self.memory[m+2])
 
 	# debug functions
 	def setRegister(self, reg, value):
