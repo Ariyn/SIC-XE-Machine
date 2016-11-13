@@ -1,6 +1,6 @@
 #!python3
 from infos import *
-from Device import Printer
+from Device import Printer, BIOS, Storage
 
 RegisterSize = 24 #bits
 IntegerSize = 24 #Bits
@@ -85,19 +85,28 @@ class SIC:
 			9	:	self.registerValues[9],
 		}
 		# lambda x:print(decodeBits(x))
-		self.devices = ["BIOS", "SECONDARY-STORAGE", Printer()]
-		self.deviceInit()
 
 		self.memory = ["00000000"]*(2**15+1)
 		self.memorySize = len(self.memory)
+		
+		self.devices = [BIOS(), Storage(), Printer()]
+		self.deviceInit()
+		
+		for i in enumerate(self.memory[:33]):
+			print(i)
 
 		self.isRunnable = True
-		self.bootload()
 
 	def deviceInit(self):
 		for i in self.devices:
-			# print(i)
-			pass
+			d = i.__onload__()
+			if type(i) == BIOS:
+				for index in range(0, len(d), 2):
+					value, value2 = d[index], d[index+1]
+					
+					hexInt = int(value, 16)<<4 |int(value2, 16)
+					print(value, value2, encodeBits(int(value, 16)<<4 |int(value2, 16), length=8))
+					self.memory[index//2] = encodeBits(int(value, 16)<<4 |int(value2, 16), length=8)
 
 	def run(self):
 		while self.isRunnable:
@@ -105,15 +114,6 @@ class SIC:
 			self.parseInst()
 			self.execInst()
 			self.addPC()
-
-	def bootload(self, bootLoader="BIOS"):
-		deviceNumber = self.devices.index(bootLoader)
-		try:
-			source = open(bootLoader, "r").read()
-			print(source)
-		except FileNotFoundError:
-			pass
-
 
 	def storeDataRegister(self, reg, address):
 		regValue = self.registers[reg].getValue()
@@ -322,9 +322,14 @@ class SIC:
 		self.registers["PC"].setValue(data)
 
 	def TD(self, address):
+		print("TESTING!!")
 		pass
+		
 	def RD(self, address):
-		address = decodeBits(address)
+		
+		address = decodeBits(self.loadMemory(address))
+		print(address)
+		# address = decodeBits(address)
 
 	def WD(self, address):
 		# print("WD", address)
@@ -381,9 +386,9 @@ class SIC:
 
 if __name__ == "__main__":
 	import sys
-	path = sys.argv[1]
+	# path = sys.argv[1]
 	sic = SIC()
-	sic.LOAD(path)
+	# sic.LOAD(path)
 	# print(sic.memory)
 	# sic.loadSampleProgram()
 	sic.run()
