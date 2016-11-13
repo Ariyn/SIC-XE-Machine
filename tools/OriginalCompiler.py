@@ -63,15 +63,6 @@ optab = {
 	"LOAD":0xF2
 }
 
-path = sys.argv[1]
-lines = open(path, "r").read()+"\n"
-
-codes = re.findall("^(\.)?([A-Za-z0-9_]+)?(?:\t| )*([A-Za-z_]+)(?:\t| )*(?:([A-Za-z0-9_]+?)(?:,(X))?|((?:X|C)`[A-Za-z0-9_]+`))?(?:\t| )*\n", lines, re.S|re.M)
-print(len(codes))
-for i in codes:
-	print(i)
-codes = [(i[1], i[2].upper(), i[3] or i[5], i[4]) for i in codes if i[0] != "."]
-
 # pass 1
 def AssemblerPass1(codes, symtab={}, debug = False):
 	debugList = []
@@ -87,12 +78,14 @@ def AssemblerPass1(codes, symtab={}, debug = False):
 		if opcode == "END":
 			break
 			
-		# print("%x"%locctr, label, opcode, operand)
+		print("%x"%locctr, label, opcode, operand)
 		
 		if label and label in symtab:
+			print(locctr, label, opcode, operand)
 			raise DuplicatedSymbol
-		else:
+		elif label:
 			symtab[label] = locctr
+			# print(label, locctr)
 		
 		if opcode in optab:
 			locctr += 3
@@ -114,6 +107,7 @@ def AssemblerPass1(codes, symtab={}, debug = False):
 				
 			locctr += operLength
 		else:
+			# print(locctr, label, opcode, operand)
 			raise InvaildOperationCode
 		# print(locctr)
 		debugList.append("%x"%locctr)
@@ -127,19 +121,21 @@ def AssemblerPass1(codes, symtab={}, debug = False):
 		return symtab
 
 def AssemblerPass2(codes, symtab, debug= False):
-	data = ""
+	data = []
 	textRecords = []
 	debugList = []
 	
 	if codes[0][1] == "START":
 		# print(codes[0], encodeBits(symtab["_PROGRAM_LENGTH"], length=6))
-		data += "H%s%s%x"%(codes[0][0][:6]+" "*(6-len(codes[0][0])), codes[0][2][:6].zfill(6),symtab["_PROGRAM_LENGTH"])
-		print(data)
+		data.append("H%s%s%x"%(codes[0][0][:6]+" "*(6-len(codes[0][0])), codes[0][2][:6].zfill(6),symtab["_PROGRAM_LENGTH"]))
+		# print(data)
 	
 	newRT = lambda sr=0, ll=0:{"text":"T", "startRecord":sr+ll, "length":0, "codes":""}
 	textRecords.append(newRT(symtab["_START"], 0))
 	tr = textRecords[-1]
 	endRecord = ""
+	
+	RSUB_ON = False
 	
 	for label, opcode, operand, isIndex in codes:
 		objectCode, newSubRoutine = None, False
@@ -148,13 +144,20 @@ def AssemblerPass2(codes, symtab, debug= False):
 				if operand in symtab:
 					operand = symtab[operand]
 				else:
+					# print(label, opcode, operand)
+					# print(symtab)
 					operand = 0
-					raise UndefinedSymbol
+					# raise UndefinedSymbol
 			else:
 				operand = 0
 			
-			if label in symtab["_SUBROUTINES"]:
+			if opcode == "RSUB":
+				RSUB_ON = True
+			elif RSUB_ON:
+				RSUB_ON = False
 				newSubRoutine = True
+			# if label in symtab["_SUBROUTINES"]:
+			# 	newSubRoutine = True
 			
 			objectCode = "%06x"%((optab[opcode]<<16)|((1 if isIndex else 0)<<15)|operand)
 			# objectCode = "%x%d%02x"%(optab[opcode], 1 if isIndex else 0, operand)
@@ -189,13 +192,52 @@ def AssemblerPass2(codes, symtab, debug= False):
 			# print(tr["length"], len(tr["codes"]))
 				
 	for i in textRecords:
-		print("T%06x%02x%s"%(i["startRecord"], i["length"]//2, i["codes"]))
-	print(endRecord)
+		data.append("T%06x%02x%s"%(i["startRecord"], i["length"]//2, i["codes"]))
+		# print()
+	data.append(endRecord)
 	
-	return debugList
+	if debug:
+		return data, debugList
+	else:
+		return data
+
+def writeBinFile(data, binFile):
+	# bytearray(len(data))
+	tempList = []
+	textEncode, byteEncode = lambda x:[ord(e) for e in x], lambda x:[int(e, 16) & 0xFF for e in x]
+	
+	tempList += textEncode(data[0][0:7])
+	tempList += byteEncode(data[0][8:])
+	for i in range(1, len(data)):
+		tempList += textEncode(data[i][0])
+		tempList += byteEncode(data[i][1:])
+	
+	binFile.write(bytearray(tempList))
+
+if 3 <= len(sys.argv):
+	bootloader = sys.argv[2]
+	## -b option
+	## this will specially compile for bootloader
+else:
+	bootloader = False
+
+path = sys.argv[1]
+lines = open(path, "r").read()+"\n"
+
+codes = re.findall("^(\.)?([A-Za-z0-9_]+)?(?:\t| )*([A-Za-z_]+)(?:\t| )*(?:([A-Za-z0-9_]+?)(?:,(X))?|((?:X|C)`[A-Za-z0-9_]+`))?(?:\t| )*\n", lines, re.S|re.M)
+codes = [(i[1], i[2].upper(), i[3] or i[5], i[4]) for i in codes if i[0] != "."]
 		
 symtab, dbList = AssemblerPass1(codes, debug=True)
-# print(symtab["_SUBROUTINES"])
-dbList2 = AssemblerPass2(codes, symtab, debug=True)
-# for i in range(0, len(dbList)):
-# 	print(dbList[i], dbList2[i])
+data, dbList2 = AssemblerPass2(codes, symtab, debug=True)
+
+binaryFile = open(path.replace(".asm", ".sicp"),"wb")
+stringFile = open(path.replace(".asm", ".sics"), "w")
+
+
+if bootloader:
+	data = [e[9:] for e in data[1:-1]]
+	stringFile.write("\n".join(data))
+	writeBinFile(data, binaryFile)
+else:
+	stringFile.write("\n".join(data))
+	writeBinFile(data, binaryFile)
