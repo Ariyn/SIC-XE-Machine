@@ -27,7 +27,7 @@ GETC     TD      INPUT
          JEQ     GETC              
          RD      INPUT             
          COMP    HEX04             
-         JEQ     STOP                
+         JEQ     HEX80                
          COMP    HEX30             
          JLT     GETC              
          SUB     HEX30             
@@ -35,14 +35,13 @@ GETC     TD      INPUT
          JLT     RETURN            
          SUB     K7               
 RETURN   RSUB
-STOP     HLT                     
-HEX04    BYTE    X'000004'
-HEX30    BYTE    X'000030'
-HEX80    BYTE    X'000080'
+HEX04    BYTE    X`000004`
+HEX30    BYTE    X`000030`
+HEX80    BYTE    X`000080`
 ZERO     WORD    0
 K7       WORD    7
 K10      WORD    10 
 K16      WORD    16 
-INPUT    BYTE    X'F1'
+INPUT    WORD    1
 TEMP     RESW    1
          END     BOOT 
