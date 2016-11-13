@@ -291,7 +291,7 @@ class SIC:
 		self.COMP(address, reg="X")
 
 	def J(self, address):
-		data = encodeBits(address)
+		data = encodeBits(address-3)
 		self.registers["PC"].setValue(data)
 
 	def JLT(self, address):
