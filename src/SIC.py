@@ -121,6 +121,10 @@ class SIC:
 			self.execInst()
 			self.addPC()
 			# print("here")
+		
+		retVal = decodeBits(self.registers["A"].getValue())
+		print("SIC ends with %d"%retVal)
+		exit(retVal)
 
 	def storeDataRegister(self, reg, address):
 		regValue = self.registers[reg].getValue()
