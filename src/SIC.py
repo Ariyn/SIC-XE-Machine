@@ -191,7 +191,12 @@ class SIC:
 
 	def LDA(self, address):
 		data = self.loadMemory(address)
-		self.registers["A"].setValue(data)
+		
+		try:
+			self.registers["A"].setValue(data)
+		except WrongBitSize:
+			print(self.opcode, decodeBits(self.registers["PC"].getValue()), address, data)
+			exit(-3)
 
 	def LDX(self, address):
 		data = self.loadMemory(address)
