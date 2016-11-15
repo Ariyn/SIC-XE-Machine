@@ -63,22 +63,42 @@ optab = {
 	"LOAD":0xF2
 }
 
+def preCompile(lines):
+	codes = re.findall("^(\.)?([A-Za-z0-9_]+)?(?:\t| )*([A-Za-z_]+)(?:\t| )*(?:([A-Za-z0-9_]+?)(?:,(X))?|((?:X|C)(?:`|')[A-Za-z0-9_]+(?:`|')))?(?:\t| )*\n", lines, re.S|re.M)
+	codes = [(i[1], i[2].upper(), i[3] or i[5], i[4]) for i in codes if i[0] != "."]
+	
+	retVal = []
+	for i, v in enumerate(codes):
+		retVal.append({
+			"line number":i*5,
+			"locctr":"",
+			"label":v[0],
+			"opcode":v[1],
+			"operand":v[2],
+			"isIndex":v[3]
+		})
+	
+	return retVal
+
 # pass 1
-def AssemblerPass1(codes, symtab={}, debug = False):
-	debugList = []
+def AssemblerPass1(codes, symtab={}):
 	locctr = 0
 	
 	symtab["_SUBROUTINES"] = []
-	if codes[0][1] == "START":
-		symtab["_START"] = int(codes[0][2], 16)
-		locctr = symtab["_START"]
-		codes = codes[1:]
+	bodyCodes = codes
+	
+	if codes[0]["opcode"] == "START":
+		symtab["_START"] = int(codes[0]["operand"], 16)
+		locctr, codes[0]["locctr"] = symtab["_START"], symtab["_START"]
+		bodyCodes = codes[1:]
 		
-	for label, opcode, operand, isIndex in codes:
+	for code in bodyCodes:
+		opcode, operand, label, isIndex = code["opcode"], code["operand"], code["label"], code["isIndex"]
+		
 		if opcode == "END":
 			break
 			
-		print("%x"%locctr, label, opcode, operand)
+		code["locctr"] = locctr
 		
 		if label and label in symtab:
 			print(locctr, label, opcode, operand)
@@ -109,55 +129,47 @@ def AssemblerPass1(codes, symtab={}, debug = False):
 		else:
 			# print(locctr, label, opcode, operand)
 			raise InvaildOperationCode
-		# print(locctr)
-		debugList.append("%x"%locctr)
 			
 	symtab["_PROGRAM_LENGTH"] = locctr - symtab["_START"]
 	symtab["_LOCCTR"] = locctr
 	
-	if debug:
-		return symtab, debugList
-	else:
-		return symtab
+	return symtab,  codes
 
-def AssemblerPass2(codes, symtab, debug= False):
-	data = []
-	textRecords = []
-	debugList = []
+def AssemblerPass2(codes, symtab):	
+	bodyCodes = codes
+	RSUB_ON, length = False, 0
 	
-	if codes[0][1] == "START":
+	if codes[0]["opcode"] == "START":
 		# print(codes[0], encodeBits(symtab["_PROGRAM_LENGTH"], length=6))
-		data.append("H%s%s%x"%(codes[0][0][:6]+" "*(6-len(codes[0][0])), codes[0][2][:6].zfill(6),symtab["_PROGRAM_LENGTH"]))
-		# print(data)
+		codes[0].update({
+			"name":codes[0]["label"][:6]+" "*(6-len(codes[0]["label"])),
+			"startRecord":codes[0]["operand"][:6].zfill(6),
+			"length":symtab["_PROGRAM_LENGTH"]
+		})
+		bodyCodes = codes[1:]
 	
-	newRT = lambda sr=0, ll=0:{"text":"T", "startRecord":sr+ll, "length":0, "codes":""}
-	textRecords.append(newRT(symtab["_START"], 0))
-	tr = textRecords[-1]
-	endRecord = ""
-	
-	RSUB_ON = False
-	
-	for label, opcode, operand, isIndex in codes:
+	for code in bodyCodes:
+		code["newSubRoutine"], code["notInCode"] = False, False
+		label, opcode, operand, isIndex = code["label"], code["opcode"], code["operand"], code["isIndex"]
 		objectCode, newSubRoutine = None, False
+		
 		if opcode in optab:
 			if operand:
 				if operand in symtab:
 					operand = symtab[operand]
 				else:
-					# print(label, opcode, operand)
-					# print(symtab)
+					print(label, opcode, operand)
 					operand = 0
-					# raise UndefinedSymbol
+					raise UndefinedSymbol
 			else:
 				operand = 0
 			
 			if opcode == "RSUB":
 				RSUB_ON = True
 			elif RSUB_ON:
-				RSUB_ON = False
-				newSubRoutine = True
+				code["newSubRoutine"], RSUB_ON = True, False
 			# if label in symtab["_SUBROUTINES"]:
-			# 	newSubRoutine = True
+				newSubRoutine = True
 			
 			objectCode = "%06x"%((optab[opcode]<<16)|((1 if isIndex else 0)<<15)|operand)
 			# objectCode = "%x%d%02x"%(optab[opcode], 1 if isIndex else 0, operand)
@@ -170,36 +182,59 @@ def AssemblerPass2(codes, symtab, debug= False):
 					objectCode = ord(v)|objectCode<<8
 				objectCode = "%06x"%objectCode
 		elif opcode == "WORD":
-			objectCode = "%06x"%int(operand)
+			objectCode = "%06x"%int(operand)	
+		elif opcode == "RESW":
+			code["notInCode"] = True
+			objectCode = "000000"*int(operand)
+		elif opcode == "RESB":
+			code["notInCode"] = True
+			objectCode = "00"*int(operand)
 		elif opcode == "END":
 			if operand and operand in symtab:
 				operand = symtab[operand]
 			else:
 				operand = 0
-			endRecord= "E%06x"%int(operand)
-			
-		if objectCode != None:
-			debugList.append(objectCode)
-			thisCodeLen = len(objectCode)
+			code["operand"] = operand
+			# endRecordString = "E%06x"%int(operand)
+		
+		code["objectCode"] = objectCode
 
-			if 60 < thisCodeLen+tr["length"] or newSubRoutine:
-				textRecords.append(newRT(tr["startRecord"], tr["length"]))
-				tr = textRecords[-1]
-				
-			tr["codes"] += objectCode
-			tr["length"] += thisCodeLen
-			
-			# print(tr["length"], len(tr["codes"]))
-				
-	for i in textRecords:
-		data.append("T%06x%02x%s"%(i["startRecord"], i["length"]//2, i["codes"]))
-		# print()
-	data.append(endRecord)
+		if not code["notInCode"] and objectCode:
+			length += len(objectCode)
+		
+		if 60 < length:
+			code["newSubRoutine"] = True
+			newSubRoutine = True
+		
+		if newSubRoutine:
+			length = 0
+			newSubRoutine = False
+
 	
-	if debug:
-		return data, debugList
-	else:
-		return data
+	return codes
+
+def AssemblerPass3(codes):
+	datas = []
+	# if codes[0]["opcode"] == "START":
+	datas.append("H%s%s%x" % (codes[0]["name"], codes[0]["startRecord"], codes[0]["length"]))
+	
+	datas.append("T%06x"%codes[0]["locctr"]+"%02x")
+	
+	for code in codes[1:-1]:
+		if code["newSubRoutine"]:
+			datas[-1] = datas[-1]%(len(datas[-1])-11)
+			datas.append("T%06x"%code["locctr"]+"%02x")
+		
+		if not code["notInCode"]:
+			datas[-1] += code["objectCode"]
+	
+	datas[-1] = datas[-1]%(len(datas[-1])-11)
+	datas.append("E%06x" % (codes[-1]["operand"]))
+	
+	# for i in datas:
+	# 	print(i)
+		
+	return datas
 
 def writeBinFile(data, binFile):
 	# bytearray(len(data))
@@ -214,30 +249,38 @@ def writeBinFile(data, binFile):
 	
 	binFile.write(bytearray(tempList))
 
+bootloader, visualizer = False, False
+
 if 3 <= len(sys.argv):
-	bootloader = sys.argv[2]
+	t = sys.argv[2]
+	if t == "-b":
+		bootloader = True
+	elif t == "-v":
+		visualizer = True
 	## -b option
 	## this will specially compile for bootloader
-else:
-	bootloader = False
 
 path = sys.argv[1]
 lines = open(path, "r").read()+"\n"
 
-codes = re.findall("^(\.)?([A-Za-z0-9_]+)?(?:\t| )*([A-Za-z_]+)(?:\t| )*(?:([A-Za-z0-9_]+?)(?:,(X))?|((?:X|C)`[A-Za-z0-9_]+`))?(?:\t| )*\n", lines, re.S|re.M)
-codes = [(i[1], i[2].upper(), i[3] or i[5], i[4]) for i in codes if i[0] != "."]
-		
-symtab, dbList = AssemblerPass1(codes, debug=True)
-data, dbList2 = AssemblerPass2(codes, symtab, debug=True)
+codes = preCompile(lines)
+symtab, codes = AssemblerPass1(codes)
+# exit(3)
+codes = AssemblerPass2(codes, symtab)
+data = AssemblerPass3(codes)
 
-binaryFile = open(path.replace(".asm", ".sicp"),"wb")
-stringFile = open(path.replace(".asm", ".sics"), "w")
-
-
-if bootloader:
-	data = [e[9:] for e in data[1:-1]]
-	stringFile.write("\n".join(data))
-	writeBinFile(data, binaryFile)
+if visualizer:
+	# print(len(dbList))
+	# debug = [("START", 0)]+debug+[("END", 0)]
+	# print(dbList[0])
+	for record in codes:
+		print("%s\t%s\t%s\t%s\t%s"%(record["locctr"], record["label"], record["opcode"], record["operand"], record["objectCode"] if record["opcode"] not in ["RESB", "RESW", "START", "END"] else ""))
+		# print(compile, record)
+	# codes = "".join([i["codes"] for i in dbList2])
+		# bytes = zip(i["codes"][0::2], i["codes"][1::2])
 else:
-	stringFile.write("\n".join(data))
+	binaryFile = open(path.replace(".asm", ".sicp"),"wb")
+	stringFile = open(path.replace(".asm", ".sics"), "w")
+	
+	stringFile.write("\\n".join(data))
 	writeBinFile(data, binaryFile)
