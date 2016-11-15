@@ -84,6 +84,7 @@ class SIC:
 			8	:	self.registerValues[8],
 			9	:	self.registerValues[9],
 		}
+		self.registers["L"].setValue(encodeBits(2**15+1))
 		# lambda x:print(decodeBits(x))
 
 		self.memory = ["00000000"]*(2**15+1)
