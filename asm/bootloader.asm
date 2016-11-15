@@ -35,13 +35,22 @@ GETC     TD      INPUT
          JLT     RETURN            
          SUB     K7               
 RETURN   RSUB
-HEX04    BYTE    X`000004`
-HEX30    BYTE    X`000030`
-HEX80    BYTE    X`000080`
-ZERO     WORD    0
-K7       WORD    7
-K10      WORD    10 
-K16      WORD    16 
-INPUT    WORD    1
-TEMP     RESW    1
-         END     BOOT 
+.
+.
+.
+GETRECD	TD		INPUT
+		JEQ		GETRECD
+		RD		INPUT
+		COMP	ASCII_H
+		JEQ		REC_H
+HEX04	BYTE    X`000004`
+HEX30	BYTE    X`000030`
+HEX80	BYTE    X`000080`
+ZERO	WORD    0
+K7		WORD    7
+K10		WORD    10 
+K16		WORD    16 
+INPUT	WORD    1
+TEMP	RESW    1
+ASCII_H	BYTE
+         END     BOOT
