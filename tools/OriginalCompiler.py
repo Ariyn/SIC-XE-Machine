@@ -167,6 +167,7 @@ def AssemblerPass2(codes, symtab):
 			if opcode == "RSUB":
 				RSUB_ON = True
 			elif RSUB_ON:
+				print(opcode)
 				code["newSubRoutine"], RSUB_ON = True, False
 			# if label in symtab["_SUBROUTINES"]:
 				newSubRoutine = True
@@ -181,13 +182,21 @@ def AssemblerPass2(codes, symtab):
 				for index, v in enumerate(operand[2:-1]):
 					objectCode = ord(v)|objectCode<<8
 				objectCode = "%06x"%objectCode
+			if RSUB_ON:
+				code["newSubRoutine"], RSUB_ON = True, False
+				newSubRoutine = True
 		elif opcode == "WORD":
 			objectCode = "%06x"%int(operand)	
+			if RSUB_ON:
+				code["newSubRoutine"], RSUB_ON = True, False
+				newSubRoutine = True
 		elif opcode == "RESW":
 			code["notInCode"] = True
+			RSUB_ON = True
 			objectCode = "000000"*int(operand)
 		elif opcode == "RESB":
 			code["notInCode"] = True
+			RSUB_ON = True
 			objectCode = "00"*int(operand)
 		elif opcode == "END":
 			if operand and operand in symtab:
@@ -222,13 +231,20 @@ def AssemblerPass3(codes):
 	
 	for code in codes[1:-1]:
 		if code["newSubRoutine"]:
-			datas[-1] = datas[-1]%(len(datas[-1])-11)
+			lastLength = len(datas[-1])-11
+			datas[-1] = datas[-1]%(lastLength)
+			
+			if lastLength == 0:
+				datas.pop()
 			datas.append("T%06x"%code["locctr"]+"%02x")
 		
 		if not code["notInCode"]:
 			datas[-1] += code["objectCode"]
 	
-	datas[-1] = datas[-1]%(len(datas[-1])-11)
+	lastLength = len(datas[-1])-11
+	datas[-1] = datas[-1]%(lastLength)
+	if lastLength == 0:
+		datas.pop()
 	datas.append("E%06x" % (codes[-1]["operand"]))
 	
 	# for i in datas:
