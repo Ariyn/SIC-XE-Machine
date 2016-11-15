@@ -101,19 +101,25 @@ class SIC:
 		for i in self.devices:
 			d = i.__onload__()
 			if type(i) == BIOS:
-				for index in range(0, len(d), 2):
-					value, value2 = d[index], d[index+1]
+				hexInt = 0
+				for index in range(0, len(d)):
+					value = d[index]
 					
-					hexInt = int(value, 16)<<4 |int(value2, 16)
-					print(value, value2, encodeBits(int(value, 16)<<4 |int(value2, 16), length=8))
-					self.memory[index//2] = encodeBits(int(value, 16)<<4 |int(value2, 16), length=8)
+					if index % 2 == 1:
+						self.memory[index//2] = self.memory[index//2][:4]+encodeBits(int(value, 16), length=4)
+					else:
+						self.memory[index//2] = encodeBits(int(value, 16)<<4, length=8)
+					# print(value, value2, encodeBits(int(value, 16)<<4 |int(value2, 16), length=8))
+					# self.memory[index//2] = encodeBits(int(value, 16)<<4 |int(value2, 16), length=8)
 
 	def run(self):
 		while self.isRunnable:
 			self.loadInst()
 			self.parseInst()
+			# print("opcode ", self.opcode)
 			self.execInst()
 			self.addPC()
+			# print("here")
 
 	def storeDataRegister(self, reg, address):
 		regValue = self.registers[reg].getValue()
