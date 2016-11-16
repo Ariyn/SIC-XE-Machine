@@ -168,21 +168,23 @@ class SIC:
 		search = False
 		for i in instructions:
 			if instructions[i] == self.opcode:
+				# print(decodeBits(self.registers["PC"].getValue()), i, self.address)
 				search = True
 				self.function = getattr(self, i)
 				# print(self.function, type(self.function))
 
 		if not search:
+			print("%06x"%self.opcode)
 			raise WrongOpcodeError
 
 	def execInst(self):
 		# print(decodeBits(self.registers["PC"].getValue()), " : ", hex(self.opcode), "("+str(encodeBits(self.opcode))+")", self.indexMode, self.address)
-		if self.indexMode == 1:
-			address = decodeBits(self.registers["PC"].getValue())+self.address
+		if self.indexMode:
+			address = decodeBits(self.registers["X"].getValue())+self.address
 		else:
 			address = self.address
-
-		self.function(self.address)
+		
+		self.function(address)
 
 	def addPC(self, delta = 3):
 		pc = decodeBits(self.registers["PC"].getValue()) + delta
