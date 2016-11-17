@@ -29,7 +29,7 @@ class Printer(Device):
 		return True
 		
 	def __call__(self, x):
-		print("P:", decodeBits(x))
+		print("P:%d with %s"%(decodeBits(x, length = 8), x), chr(decodeBits(x, length = 8)))
 		
 class BIOS(Device):
 	name = "BIOS"

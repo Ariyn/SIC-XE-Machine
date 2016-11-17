@@ -340,8 +340,16 @@ class SIC:
 		self.registers["PC"].setValue(data)
 
 	def TD(self, address):
-		print("TESTING!!")
-		pass
+		address = decodeBits(self.loadMemory(address))
+		ready = self.devices[address].__test__()
+		
+		if ready:
+			comps = "100"
+		else:
+			comps = "010"
+			
+		self.registers["SW"].setValue(comps, startBit = self.ccPointer, dataLength = 3)
+
 		
 	def RD(self, address):
 		
@@ -351,11 +359,8 @@ class SIC:
 
 	def WD(self, address):
 		# print("WD", address)
-		address = self.loadMemory(address)
-		address = decodeBits(address)
-		# print("WD", address, self.devices[address])
-		data = self.registers["A"].getValue()
-		# print(address, self.devices[address], callable(self.devices[address]), dir(self.devices[address]))
+		address = decodeBits(self.loadMemory(address))
+		data = self.registers["A"].getValue()[-8:]
 		self.devices[address](data)
 
 
