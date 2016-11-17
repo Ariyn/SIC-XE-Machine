@@ -64,7 +64,7 @@ optab = {
 }
 
 def preCompile(lines):
-	codes = re.findall("^(\.)?([A-Za-z0-9_]+)?(?:\t| )*([A-Za-z_]+)(?:\t| )*(?:([A-Za-z0-9_]+?)(?:,(X))?|((?:X|C)(?:`|')[A-Za-z0-9_]+(?:`|')))?(?:\t| )*\n", lines, re.S|re.M)
+	codes = re.findall("^(\.)?([A-Za-z0-9_]+)?(?:\t| )*([A-Za-z_]+)(?:\t| )*(?:([A-Za-z0-9_]+?)(?:,(X))?|((?:X|C)(?:`|').+?(?:`|')))?(?:\t| )*\n", lines, re.S|re.M)
 	codes = [(i[1], i[2].upper(), i[3] or i[5], i[4]) for i in codes if i[0] != "."]
 	
 	retVal = []
