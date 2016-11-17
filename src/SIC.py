@@ -69,7 +69,7 @@ class SIC:
 	# 	"TD","RD","WD"
 	# ]
 
-	def __init__(self):
+	def __init__(self, source=None):
 		self.registerValues = [Register(0,"A"),Register(1, "X"),Register(2, "L"),Register(),Register(),Register(),Register(),Register(),Register(8, "PC"),Register(9, "SW")]
 
 		self.registers = {
@@ -90,7 +90,7 @@ class SIC:
 		self.memory = ["00000000"]*(2**15+1)
 		self.memorySize = len(self.memory)
 		
-		self.devices = [BIOS(), Storage(), Printer()]
+		self.devices = [BIOS(source), Storage(), Printer()]
 		self.deviceInit()
 		
 		for i in enumerate(self.memory[:33]):
@@ -395,18 +395,18 @@ class SIC:
 	def setRegister(self, reg, value):
 		self.registers[reg].setValue(value)
 
-	def loadSampleProgram(self):
-		program = open("2+2=5", "r").read()
-		length = program.count("\n")
-		print(length)
-		# self.LDX(0)
-		# self.LOAD("2+2=5")
 
 if __name__ == "__main__":
 	import sys
+	import select
+
+	if select.select([sys.stdin,],[],[],0.0)[0]:
+		source = input()
+	else:
+		source = None
 	# path = sys.argv[1]
-	sic = SIC()
+	sic = SIC(source)
+	
 	# sic.LOAD(path)
 	# print(sic.memory)
-	# sic.loadSampleProgram()
 	sic.run()

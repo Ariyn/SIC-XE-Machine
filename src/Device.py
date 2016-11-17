@@ -41,12 +41,16 @@ class BIOS(Device):
 	## BIOS must return value with parsed location
 	## if RESW is 1
 	## BIOS will return 3bytes with 0
-	
+
+	def __init__(self, source=None):
+		if source:
+			self.firmware = source
+		
 	def __onload__(self):
 		loc = 0
 		retVal = []
 		
-		for i in self.firmware.split("\n"):
+		for i in self.firmware.split("\\n"):
 			if i[0] == "H":
 				name, start, size = i[1:7], i[7:13], i[13:15]
 				# print(name, start, size)
