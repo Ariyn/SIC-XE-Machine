@@ -255,10 +255,10 @@ def AssemblerPass3(codes):
 def writeBinFile(data, binFile):
 	# bytearray(len(data))
 	tempList = []
-	textEncode, byteEncode = lambda x:[ord(e) for e in x], lambda x:[int(e, 16) & 0xFF for e in x]
+	textEncode, byteEncode = lambda x:[ord(e) for e in x], lambda x:[(int(e[0], 16)<<4 | int(e[1], 16)) & 0xFF for e in zip(x[0::2], x[1::2])]
 	
 	tempList += textEncode(data[0][0:7])
-	tempList += byteEncode(data[0][8:])
+	tempList += byteEncode(data[0][7:])
 	for i in range(1, len(data)):
 		tempList += textEncode(data[i][0])
 		tempList += byteEncode(data[i][1:])
