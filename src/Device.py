@@ -14,12 +14,30 @@ class Device:
 		pass
 
 class Storage(Device):
-	program = "HPIBONA0000006f\nT0000001814000c48002d08000c4c0000\nT00002d4200006018005d0c006000006918005d0c00690000600c006c1800690c006000806c\nT00004e1e0c0069dc006628006338003f4c0000\nT00005d06000001\nT0000630c000bb8000002\nE000000"
+	index = 0
+	programPath = "../asm/2+2=5.sicp"
+	
+	def __onload__(self):
+		self.program = open(self.programPath, "rb").read()
+		for i in range(0, len(self.program)):
+			v = self.program[i]
+		
 	def __call__(self):
-		pass
+		if len(self.program) <= self.index:
+			d = 4
+		else:
+			d = self.program[self.index]
+		bits = encodeBits(d)[-8:]
+		try:
+			print(chr(decodeBits(bits, length=8)))
+		except:
+			pass
+		
+		self.index += 1
+		return bits
 	
 	def __test__(self):
-		return False
+		return True
 	
 class Printer(Device):
 	name = "printer"
