@@ -50,6 +50,8 @@ class SIC:
 	# Interger 24Bits
 	# Character 8Bits
 	ccPointer = 8
+	DebugPC = 2**15+1
+	MaximumCycle = DebugPC
 
 	instruction = "000000000000000000000000"
 	opcode = instruction[0:8]
@@ -114,12 +116,14 @@ class SIC:
 					# self.memory[index//2] = encodeBits(int(value, 16)<<4 |int(value2, 16), length=8)
 
 	def run(self):
-		while self.isRunnable:
+		cycle = 0
+		while self.isRunnable and cycle <= self.MaximumCycle:
 			self.loadInst()
 			self.parseInst()
 			# print("opcode ", self.opcode)
 			self.execInst()
 			self.addPC()
+			cycle += 1
 			# print("here")
 		
 		retVal = decodeBits(self.registers["A"].getValue())
@@ -188,7 +192,7 @@ class SIC:
 
 	def addPC(self, delta = 3):
 		pc = decodeBits(self.registers["PC"].getValue()) + delta
-		if 2**15 <= pc:
+		if 2**15 <= pc or self.DebugPC <= pc:
 			self.isRunnable = False
 		
 		self.registers["PC"].setValue(encodeBits(pc))
