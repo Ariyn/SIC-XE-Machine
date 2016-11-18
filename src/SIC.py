@@ -356,9 +356,10 @@ class SIC:
 
 		
 	def RD(self, address):
-		
 		address = decodeBits(self.loadMemory(address))
 		print(address)
+		data = self.devices[address]()
+		self.registers["A"].setValue(data, startBit = 16, dataLength = 8)
 		# address = decodeBits(address)
 
 	def WD(self, address):
