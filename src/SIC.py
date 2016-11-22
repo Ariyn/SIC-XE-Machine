@@ -151,15 +151,10 @@ class SIC:
 		self.indexMode = decodeBits(inst[8:9], zf=True)
 		self.address = decodeBits(inst[9:24], zf=True)
 		
-		search = False
-		for i in instructions:
-			if instructions[i] == self.opcode:
-				# print(decodeBits(self.registers["PC"].getValue()), i, self.address)
-				search = True
-				self.function = getattr(self, i)
-				# print(self.function, type(self.function))
-
-		if not search:
+		if self.opcode in instructions:
+			i = instructions[self.opcode]
+			self.function = getattr(self, i)
+		else:
 			print("%06x"%self.opcode)
 			raise WrongOpcodeError
 
