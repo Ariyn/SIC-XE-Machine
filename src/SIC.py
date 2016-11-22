@@ -7,48 +7,10 @@ IntegerSize = 24 #Bits
 CharacterSize = 24 #Bits
 WordSize = 8 #Bits
 
-instructions = {
-	"LDA":0x0,
-	"LDX":0x4,
-	"LDCH":0x50,
-	"LDL":0x8,
-
-	"STA":0xC,
-	"STX":0x10,
-	"STCH":0x54,
-	"STL":0x14,
-	"STSW":0xE8,
-
-	"ADD":0x18,
-	"SUB":0x1C,
-	"MUL":0x20,
-	"DIV":0x24,
-
-	"AND":0x40,
-	"OR":0x44,
-
-	"COMP":0x28,
-	"TIX":0x2C,
-
-	"J":0x3C,
-	"JLT":0x38,
-	"JGT":0x34,
-	"JEQ":0x30,
-
-	"JSUB":0x48,
-	"RSUB":0x4C,
-
-	"TD":0xE0,
-	"RD":0xD8,
-	"WD":0xDC,
-
-	"DUMP":0xF1,
-	"LOAD":0xF2
-}
-
 class SIC:
 	# Interger 24Bits
 	# Character 8Bits
+	mode = "SIC"
 	ccPointer = 8
 	DebugPC = 2**15+1
 	MaximumCycle = DebugPC
@@ -71,7 +33,7 @@ class SIC:
 	# 	"TD","RD","WD"
 	# ]
 
-	def __init__(self, source=None):
+	def __init__(self, source=None, debug = False):
 		self.registerValues = [Register(0,"A"),Register(1, "X"),Register(2, "L"),Register(),Register(),Register(),Register(),Register(),Register(8, "PC"),Register(9, "SW")]
 
 		self.registers = {
@@ -97,9 +59,17 @@ class SIC:
 		
 		for i in enumerate(self.memory[:33]):
 			print(i)
+		self.debug = None
 
 		self.isRunnable = True
-
+		
+	def checkMemory(self):
+		pass
+	def checkInstruction(self):
+		pass
+	def runByLine(self):
+		pass
+		
 	def deviceInit(self):
 		for i in self.devices:
 			d = i.__onload__()
@@ -115,20 +85,32 @@ class SIC:
 					# print(value, value2, encodeBits(int(value, 16)<<4 |int(value2, 16), length=8))
 					# self.memory[index//2] = encodeBits(int(value, 16)<<4 |int(value2, 16), length=8)
 
-	def run(self):
+	def run(self, sequence = 0):
 		cycle = 0
-		while self.isRunnable and cycle <= self.MaximumCycle:
+		
+		if sequence:
+			self.MaximumCycle = cycle + sequence
+			
+		while self.isRunnable and cycle < self.MaximumCycle:
+			self.checkMemory()
+			
 			self.loadInst()
 			self.parseInst()
 			# print("opcode ", self.opcode)
+			
+			self.checkInstruction()
+			
 			self.execInst()
 			self.addPC()
+			
 			cycle += 1
+			
+			self.runByLine()
 			# print("here")
 		
 		retVal = decodeBits(self.registers["A"].getValue())
-		print("SIC ends with %d"%retVal)
-		exit(retVal)
+		# print("SIC ends with %d"%retVal)
+		# exit(retVal)
 
 	def storeDataRegister(self, reg, address):
 		regValue = self.registers[reg].getValue()
@@ -415,7 +397,8 @@ if __name__ == "__main__":
 	else:
 		source = None
 	# path = sys.argv[1]
-	sic = SIC(source)
+	sic = SIC(source, debug=True)
+	# sic.MaximumCycle = 200
 	
 	# sic.LOAD(path)
 	# print(sic.memory)

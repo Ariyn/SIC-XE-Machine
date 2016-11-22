@@ -273,6 +273,8 @@ if 3 <= len(sys.argv):
 		bootloader = True
 	elif t == "-v":
 		visualizer = True
+	elif t == "-d":
+		debug = True
 	## -b option
 	## this will specially compile for bootloader
 
@@ -284,19 +286,25 @@ symtab, codes = AssemblerPass1(codes)
 # exit(3)
 codes = AssemblerPass2(codes, symtab)
 data = AssemblerPass3(codes)
-
+		
 if visualizer:
-	# print(len(dbList))
-	# debug = [("START", 0)]+debug+[("END", 0)]
-	# print(dbList[0])
 	for record in codes:
 		print("%s\t%s\t%s\t%s\t%s"%(record["locctr"], record["label"], record["opcode"], record["operand"], record["objectCode"] if record["opcode"] not in ["RESB", "RESW", "START", "END"] else ""))
 		# print(compile, record)
 	# codes = "".join([i["codes"] for i in dbList2])
 		# bytes = zip(i["codes"][0::2], i["codes"][1::2])
+
 else:
 	binaryFile = open(path.replace(".asm", ".sicp"),"wb")
 	stringFile = open(path.replace(".asm", ".sics"), "w")
 	
-	stringFile.write("\\n".join(data))
 	writeBinFile(data, binaryFile)
+	
+	if debug:
+		for code in codes:
+			# print(type(code["line number"]), "%06x" % code["locctr"], type(code["label"]), type(code["opcode"]), type(code["operand"]))
+			d = "\d%d %06x %s %s %s" % (code["line number"], code["locctr"] if code["locctr"] else 0, code["label"], code["opcode"], code["operand"])
+			data.append(d)
+	stringFile.write("\\n".join(data))
+	
+	
