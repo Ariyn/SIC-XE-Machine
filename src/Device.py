@@ -89,7 +89,7 @@ class BIOS(Device):
 					# retVal.append(int(z[0]+z[1], 16))
 					loc += 1
 			elif i[0] == "E":
-				pass
+				break
 				# for e in retVal:
 				# 	
 				# 	print(e)
