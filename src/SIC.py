@@ -14,11 +14,12 @@ class SIC:
 	ccPointer = 8
 	DebugPC = 2**15+1
 	MaximumCycle = DebugPC
+	pc = 0
 
 	instruction = "000000000000000000000000"
-	opcode = instruction[0:8]
-	indexMode = instruction[8:9]
-	address = instruction[9:24]
+	opcode = decodeBits(instruction[0:8], zf=True)
+	indexMode = decodeBits(instruction[8:9], zf=True)
+	address = decodeBits(instruction[9:24], zf=True)
 
 	function = None
 
@@ -91,9 +92,7 @@ class SIC:
 		if sequence:
 			self.MaximumCycle = cycle + sequence
 			
-		while self.isRunnable and cycle < self.MaximumCycle:
-			self.checkMemory()
-			
+		while self.isRunnable and cycle < self.MaximumCycle:			
 			self.loadInst()
 			self.parseInst()
 			# print("opcode ", self.opcode)
@@ -104,9 +103,7 @@ class SIC:
 			self.addPC()
 			
 			cycle += 1
-			
-			self.runByLine()
-			# print("here")
+			print("here")
 		
 		retVal = decodeBits(self.registers["A"].getValue())
 		# print("SIC ends with %d"%retVal)
@@ -144,6 +141,7 @@ class SIC:
 		pc = decodeBits(self.registers["PC"].getValue())
 		inst = self.loadMemory(pc)
 		self.instruction = inst
+		self.pc = pc
 
 	def parseInst(self):
 		inst = self.instruction
