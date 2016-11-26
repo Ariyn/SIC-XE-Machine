@@ -7,6 +7,9 @@ import operator
 
 from SIC import *
 
+## TODO
+## arrow up : previous command
+## memory map no arrow when start
 class Debugger:
 	dataAssign = [
 		(1, 0, "mode = %s", "mode")
@@ -17,7 +20,7 @@ class Debugger:
 	needInput = True
 	delay = 0
 	breakPoint = []
-	cmdList = ["c", "q", "r", "b", "t"]
+	cmdList = ["c", "q", "r", "b", "t", "d", "rb", "de", "re"]
 	registers = {}
 	debugLines = {}
 	tracingVariables = []
@@ -47,37 +50,41 @@ class Debugger:
 		while self.runnable:
 			stdscr.clear()
 			
-			# stdscr.addstr(6, 20, str(self.runnable))
-			stdscr.addstr(3, 20, "%05x" % self.instance.pc)
-			stdscr.addstr(4, 20, self.instance.instruction[0:8])
-			stdscr.addstr(4, 29, self.instance.instruction[8])
-			stdscr.addstr(4, 31, self.instance.instruction[9:])
-			stdscr.addstr(5, 20, instructions[self.instance.opcode])
-			
 			self.instance.checkMemory()
+			
+			self.instance.runByLine()
 			
 			if self.isRun:
 				self.instance.run(1)
-
-			self.instance.runByLine()
 			
 			if not self.instance.isRunnable:
 				break
 			
+			if not self.needInput:
+				time.sleep(self.delay)
+			
 			stdscr.refresh()
-			time.sleep(self.delay)
 			
 		stdscr.addstr(3, 20, "done")
 		# time.sleep(5)
 		exit(0)
 		# stdscr.getkey()
+		
+	def drawInstruction(self):
+		stdscr = self.window
+		stdscr.addstr(3, 20, "%05x" % self.instance.pc)
+		stdscr.addstr(4, 20, self.instance.instruction[0:8])
+		stdscr.addstr(4, 29, self.instance.instruction[8])
+		stdscr.addstr(4, 31, self.instance.instruction[9:])
+		stdscr.addstr(5, 20, instructions[self.instance.opcode])
+		stdscr.addstr(5, 31, "%06x" %decodeBits(self.instance.instruction[9:], zf=True))
 	
 	def drawMemory(self):
 		stdscr = self.window
 		staticSize = len(self.dataAssign)+5
 		ran = range(self.memoryStart, self.memoryStart+self.memoryMapHeight)
 		
-		if self.instance.pc+3 not in ran:
+		if  self.instance.pc+3 not in ran:
 			self.memoryStart = max(0, 3+self.instance.pc-self.memoryMapHeight)
 			ran = range(self.memoryStart, self.memoryStart+self.memoryMapHeight)
 			
@@ -91,14 +98,22 @@ class Debugger:
 		stdscr = self.window
 		stdscr.addstr(0, 50, "registers")
 		for i, v in enumerate(sorted(self.registers.items(), key=operator.itemgetter(0))):
+			value = v[1].getValue()
 			stdscr.addstr(i+1, 50, "%s"%v[0])
-			stdscr.addstr(i+1, 55, "%s"%v[1].getValue())
+			stdscr.addstr(i+1, 55, "%s %06x"%(value, decodeBits(value)))
 		# time.sleep(3)
 		pass
 	
-	def drawVariables(self):
+	def drawBreakPoints(self):
 		stdscr = self.window
 		startLoc = len(self.registers)+2
+		stdscr.addstr(startLoc, 50, "breakPoints %d"%len(self.breakPoint))
+		
+		stdscr.addstr(startLoc+1, 50, " ".join(["%x"%i for i in self.breakPoint]))
+			
+	def drawVariables(self):
+		stdscr = self.window
+		startLoc = len(self.registers)+5
 		stdscr.addstr(startLoc, 50, "variables %d"%len(self.tracingVariables))
 
 		for i, v in enumerate(self.tracingVariables):
@@ -121,13 +136,17 @@ class Debugger:
 			
 			debugger.isRun = False
 			pc = self.pc
+			
 			if pc in debugger.breakPoint:
 				debugger.needInput = True
+			
+			debugger.drawInstruction()
+			debugger.drawMemory()
+			debugger.drawRegisters()
+			debugger.drawVariables()
+			debugger.drawBreakPoints()
 
 			if debugger.needInput:
-				debugger.drawMemory()
-				debugger.drawRegisters()
-				debugger.drawVariables()
 				curses.echo()
 				curses.curs_set(1)
 				NotYetKey = True
@@ -136,23 +155,33 @@ class Debugger:
 					debugger.window.move(debugger.windowSize[0]-1, debugger.windowSize[1]//2)
 					
 					key = debugger.window.getstr().decode()
-					if key and 0 < len(key) and key[0] in debugger.cmdList:
+					if key and 0 < len(key) and (key[0] in debugger.cmdList or key[0:2] in debugger.cmdList):
 						NotYetKey = False
-				
-				if key[0] == "r":
+				if key[0:2] == "rb":
+					value = int(key.split(" ")[1], 16)
+					debugger.breakPoint.remove(value)
+				elif key[0:2] == "de":
+					self.delay = int(key.split(" ")[1])
+				elif key[0:2] == "re":
+					debugger.reset()
+				elif key[0] == "r":
 					debugger.needInput = False
+					debugger.isRun = True
 				elif key[0] == "q":
 					debugger.runnable = False
 					debugger.window.addstr(2, 20, str(debugger.runnable))
 				elif key[0] == "b":
-					keys = key.split(" ")
-					debugger.breakPoint.append(int(keys[1]))
+					value = int(key.split(" ")[1], 16)
+					debugger.breakPoint.append(value)
 				elif key[0] == "c":
 					debugger.isRun = True
 				elif key[0] == "t":
 					keys = key.split(" ")
 					debugger.setTracingVariable(keys[1])
 					debugger.isRun = False
+				elif key[0] == "d":
+					keys = key.split(" ")
+					debugger.DUMP(int(keys[1], 16), int(keys[2], 16))
 					
 				
 				debugger.key = key
@@ -160,8 +189,27 @@ class Debugger:
 				curses.curs_set(0)
 				debugger.window.addstr(1, 20, "%s"%debugger.key)
 			else:
-				self.isRun = True
+				debugger.isRun = True
+
 		return runByLine
+		
+	def DUMP(self, sa, size, path="sample_DUMP"):
+		if size == 0:
+			m = self.instance.memory
+		else:
+			m = self.instance.memory[sa:sa+size]
+		# print(sa, sa+size)
+		# memoryString = "\n".join(["%05x %s %5s %s %05x" %(3*i+sa, "".join(v), instructions[decodeBits(v[0], zf=True)], v[1][0], decodeBits(v[1][1:]+v[2], zf=True)) for i, v in enumerate(zip(m[0::3], m[1::3], m[2::3]))])
+		memoryString = "\n".join(["%05x %s"%(sa+i*3, "".join(v)) for i, v in enumerate(zip(m[0::3], m[1::3], m[2::3]))])
+		memoryString = "memorydump FROM %05x TO 0x%05x\n" %(sa, sa+size) + memoryString
+		
+		
+		file = open(path, "w")
+		file.write(memoryString)
+		file.close()
+		
+	def reset(self):
+		pass
 	
 def checkMemory(self):
 	pc = self.registers["PC"].getValue()
@@ -202,8 +250,9 @@ if __name__ == "__main__":
 		source = ""
 	
 	debugLines = {}
+	
 	for i in source.split("\\n"):
-		if i[0] == "\\" and i[1] == "d":
+		if i and i[0] == "\\" and i[1] == "d":
 			dataSet = i[2:].split(" ")
 			debugLines[dataSet[0]] = dataSet
 			debugLines[dataSet[1]] = dataSet
