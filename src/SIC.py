@@ -57,9 +57,6 @@ class SIC:
 		
 		self.devices = [BIOS(source), Storage(), Printer()]
 		self.deviceInit()
-		
-		for i in enumerate(self.memory[:33]):
-			print(i)
 		self.debug = None
 
 		self.isRunnable = True
@@ -73,8 +70,11 @@ class SIC:
 		
 	def deviceInit(self):
 		for i in self.devices:
+			# print(i)
 			d = i.__onload__()
+			# print(d)
 			if type(i) == BIOS:
+				# print(d)
 				hexInt = 0
 				for index in range(0, len(d)):
 					value = d[index]
@@ -103,7 +103,7 @@ class SIC:
 			self.addPC()
 			
 			cycle += 1
-			print("here")
+			# print("here")
 		
 		retVal = decodeBits(self.registers["A"].getValue())
 		# print("SIC ends with %d"%retVal)
@@ -188,6 +188,7 @@ class SIC:
 		self.registers["X"].setValue(data)
 
 	def LDCH(self, address):
+		# print(address, self.loadMemory(address))
 		data = self.loadMemory(address)[0:8]
 
 		self.registers["A"].setValue(data, startBit = 16, dataLength = 8)
@@ -269,6 +270,7 @@ class SIC:
 		value = decodeBits(self.loadMemory(address))
 		value2 = decodeBits(self.registers[reg].getValue())
 
+		# print(self.registers[reg].getValue(), self.loadMemory(address), value, value2, address)
 		comps = ""
 
 		if value < value2:
@@ -311,14 +313,19 @@ class SIC:
 			self.J(address)
 
 	def JSUB(self, address):
+		# print("SUB!", address, self.registers["PC"].getValue())
 		self.registers["L"].setValue(self.registers["PC"].getValue())
 		self.J(address)
 
 	def RSUB(self, address):
 		data = self.registers["L"].getValue()
+		# print(data)
+		# self.J(decodeBits(data))
 		self.registers["PC"].setValue(data)
 
 	def TD(self, address):
+		# print("TESTING!!")
+		# print(address)
 		address = decodeBits(self.loadMemory(address))
 		ready = self.devices[address].__test__()
 		
@@ -326,15 +333,16 @@ class SIC:
 			comps = "100"
 		else:
 			comps = "010"
-			
+		# print(comps, self.devices[address], ready)
 		self.registers["SW"].setValue(comps, startBit = self.ccPointer, dataLength = 3)
 
 		
 	def RD(self, address):
 		address = decodeBits(self.loadMemory(address))
-		print(address)
+		# print(address)
 		data = self.devices[address]()
 		self.registers["A"].setValue(data, startBit = 16, dataLength = 8)
+		# print("RD!", data)
 		# address = decodeBits(address)
 
 	def WD(self, address):

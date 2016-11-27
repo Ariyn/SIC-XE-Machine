@@ -1,0 +1,124 @@
+<html>
+	<head>
+		<!-- http://lanian-windrunner.blogspot.kr/2013/08/python-websocket-server.html -->
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+		<script src="https://code.jquery.com/jquery-3.1.1.min.js" charset="utf-8"></script>
+		<style>
+			html, body {
+				height : 100%;
+				overflow: hidden;
+			}
+			.dataContainer {
+				border:1px solid black;
+				overflow-x:hidden;
+				overflow-y:scroll;
+			}
+			
+			#memoryMap {
+				height:100%;
+			}
+			#variableMap {
+				height:30%;
+			}
+			#registerMap {
+				height:30%;
+			}
+		</style>
+
+		<script>
+			var remoteAddress = "ws://:8765"
+			var socket = null;
+			var debugLines = {};
+			var instruction = {};
+			var breakPoints = [];
+			var registers = {};
+			var memory = [];
+			
+			function handleMessage(msg) {
+				data = JSON.parse(msg)
+				debugLines = data["debugLines"]
+				instruction = data["instruction"]
+				breakPoints = data["breakPoints"]
+				registers = data["registers"];
+				variables = data["variables"]
+				memory = data["memory"];
+				
+				reload();
+			}
+			
+			function connect() {
+				if(socket && socket.readState != 1)
+					return;
+				
+				socket = new WebSocket(remoteAddress);
+				socket.onopen = function() {
+					socketOpened();
+				}
+				socket.onerror = function(error) {
+					socketError(error);
+				}
+				socket.onmessage = function(event) {
+					handleMessage(event.data);
+				}
+				socket.onclose = function() {
+					socketClosed();
+				}
+			}
+			
+			function disconnect() {
+				if(!socket) {
+					socket.close();
+				}
+			}
+			
+			function socketOpened() {
+				console.log("opend!")
+			}
+			function socketError(error) {
+				console.log('socket error');
+				console.log(error)
+			}
+			function socketClosed() {
+				// TODO
+				// try to reconnect??
+				
+				console.log("socket closed!")
+			}
+			
+			// change this to angular js
+			function reload() {
+				console.log(memory)
+				var tagString = ""
+				// memory.length
+				for(var i=0; i<300; i++) {
+					tagString += "<div>"+i.toString(16)+"  "+memory.map[i]+"</div>";
+				}
+				$("#memoryMap").append(tagString)
+				
+				// $("#instructionMap")
+			}
+			
+			$(document).ready(function() {
+				console.log("ready!")
+				connect();
+			})
+		</script>
+	</head>
+	<body>
+		<div class="row container-fluid">
+			<div class="col-md-3 dataContainer" id="memoryMap">
+				
+			</div>
+			<div class="col-md-3 dataContainer" id="instructionMap">
+				
+			</div>
+			<div class="dataContainer col-md-6 pull-right" id="registerMap">
+				
+			</div>
+			<div class="col-md-6 dataContainer pull-right" id="variableMap">
+				
+			</div>
+			
+		</div>
+	</body>
+</html>
